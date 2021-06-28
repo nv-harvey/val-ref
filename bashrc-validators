@@ -116,8 +116,6 @@ if ! shopt -oq posix; then
   fi
 fi
 
-source "$HOME/.cargo/env"
-
 alias update='sudo apt update'
 alias upgrade='sudo apt upgrade'
 alias miner='~/miner/_build/validator/rel/miner/bin/miner'
