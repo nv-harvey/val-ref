@@ -1,0 +1,18 @@
+server:
+  log_level: info
+  http_listen_port: 12345
+prometheus:
+  global:
+    scrape_interval: 30s
+  configs:
+    - name: agent
+      host_filter: false
+      scrape_configs:
+        - job_name: agent
+          static_configs:
+            - targets: ['127.0.0.1:9825']
+      remote_write:
+        - url: https://prometheus-blocks-prod-us-central1.grafana.net/api/prom/push
+        basic_auth:
+          username: 88177
+          password: eyJrIjoiZTZiYTM3MmE3NzY5NzdkZTNhNzdiYzFjZTZiNTMyZmIzNzVlYzNkYyIsIm4iOiJoYXJ2ZXkyLWVhc3lzdGFydC1wcm9tLXB1Ymxpc2hlciIsImlkIjo0ODYyMTF9
