@@ -4,6 +4,7 @@ server:
 prometheus:
   global:
     scrape_interval: 30s
+  wal_directory: /tmp/grafana-agent-wal
   configs:
     - name: agent
       host_filter: false
