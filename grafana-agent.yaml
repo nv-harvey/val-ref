@@ -13,6 +13,6 @@ prometheus:
             - targets: ['127.0.0.1:9825']
       remote_write:
         - url: https://prometheus-blocks-prod-us-central1.grafana.net/api/prom/push
-        basic_auth:
-          username: 88177
-          password: eyJrIjoiZTZiYTM3MmE3NzY5NzdkZTNhNzdiYzFjZTZiNTMyZmIzNzVlYzNkYyIsIm4iOiJoYXJ2ZXkyLWVhc3lzdGFydC1wcm9tLXB1Ymxpc2hlciIsImlkIjo0ODYyMTF9
+          basic_auth:
+            username: 88177
+            password: eyJrIjoiZTZiYTM3MmE3NzY5NzdkZTNhNzdiYzFjZTZiNTMyZmIzNzVlYzNkYyIsIm4iOiJoYXJ2ZXkyLWVhc3lzdGFydC1wcm9tLXB1Ymxpc2hlciIsImlkIjo0ODYyMTF9
