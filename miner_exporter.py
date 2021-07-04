@@ -3,7 +3,7 @@
 # external packages
 import prometheus_client
 import psutil
-import docker
+# import docker
 import requests
 import dateutil.parser
 
