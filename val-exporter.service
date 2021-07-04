@@ -2,7 +2,7 @@
 Description=Immortal validator monitoring
 
 [Service]
-Type=simple
+User=ubuntu
 ExecStart=python3 /home/ubuntu/miner_exporter.py
 Restart=always
 
