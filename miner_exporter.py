@@ -29,7 +29,8 @@ VALIDATOR_CONTAINER_NAME = os.environ.get('VALIDATOR_CONTAINER_NAME', 'validator
 IS_DOCKER = False
 
 # prometheus exporter types Gauge,Counter,Summary,Histogram,Info and Enum
-SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data')
+SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data',
+                                       ['resource_type','validator_name'])
 SYSTEM_USAGE = prometheus_client.Gauge('system_usage',
                                        'Hold current system resource usage',
                                        ['resource_type','validator_name'])
@@ -203,7 +204,7 @@ def collect_balance(docker_container, addr, miner_name):
   #for line in out.output.decode('utf-8').split("\n"):
   #  if 'pubkey' in line:
   #    addr=line[9:60]
-  api_validators = safe_get_json(f'https://testnet-api.helium.wtf/v1/validators/{addr}')
+  api_validators = safe_get_json(f'https://api.helium.io/v1/validators/{addr}')
   if not api_validators:
     log.error("validator fetch returned empty JSON")
     return
@@ -212,7 +213,7 @@ def collect_balance(docker_container, addr, miner_name):
     return
   owner = api_validators['data']['owner']
 
-  api_accounts = safe_get_json(f'https://testnet-api.helium.wtf/v1/accounts/{owner}')
+  api_accounts = safe_get_json(f'https://api.helium.io/v1/accounts/{owner}')
   if not api_accounts:
     return
   if not api_accounts.get('data') or not api_accounts['data'].get('balance'):
