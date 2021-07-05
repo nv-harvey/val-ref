@@ -29,8 +29,7 @@ VALIDATOR_CONTAINER_NAME = os.environ.get('VALIDATOR_CONTAINER_NAME', 'validator
 IS_DOCKER = False
 
 # prometheus exporter types Gauge,Counter,Summary,Histogram,Info and Enum
-SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data',
-                                       ['resource_type','validator_name'])
+SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data') #DOESN'T CURRENTLY SUPPORT LABELS
 SYSTEM_USAGE = prometheus_client.Gauge('system_usage',
                                        'Hold current system resource usage',
                                        ['resource_type','validator_name'])
