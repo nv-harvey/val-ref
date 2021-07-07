@@ -79,7 +79,7 @@ def exec_command(cmd_text, docker_container_obj):
         docker_output = (out.output).decode('utf-8')
         return docker_output
     else:
-        cmd_text = re.sub("miner", "~/miner/_build/validator/rel/miner/bin/miner", cmd_text)
+        cmd_text = re.sub("miner", "sudo /home/ubuntu/miner/_build/validator/rel/miner/bin/miner", cmd_text)
         return os.popen(cmd_text).read()
 
 def get_facts(docker_container_obj):
