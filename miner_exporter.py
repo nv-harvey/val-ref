@@ -28,6 +28,12 @@ UPDATE_PERIOD = int(os.environ.get('UPDATE_PERIOD', 30))
 VALIDATOR_CONTAINER_NAME = os.environ.get('VALIDATOR_CONTAINER_NAME', 'validator')
 IS_DOCKER = False
 
+# Gather the ledger penalities for all, instead of just "this" validator. When in this
+# mode all validators from `miner validator ledger` with a penalty >0.0 will be included.
+# The >0 constraint is just to keep data and traffic smaller.
+# ALL_PENALTIES = os.environ.get('ALL_PENALTIES', 0)
+ALL_PENALTIES = False
+
 # prometheus exporter types Gauge,Counter,Summary,Histogram,Info and Enum
 SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data') #DOESN'T CURRENTLY SUPPORT LABELS
 SYSTEM_USAGE = prometheus_client.Gauge('system_usage',
@@ -138,6 +144,10 @@ def stats():
 
   SYSTEM_USAGE.labels('CPU', hotspot_name_str).set(psutil.cpu_percent())
   SYSTEM_USAGE.labels('Memory', hotspot_name_str).set(psutil.virtual_memory()[2])
+  SYSTEM_USAGE.labels('CPU-Steal', hotspot_name_str).set(psutil.cpu_times_percent().steal)
+  SYSTEM_USAGE.labels('Disk Used', hotspot_name_str).set(float(psutil.disk_usage('/').used) / float(psutil.disk_usage('/').total))
+  SYSTEM_USAGE.labels('Disk Free', hotspot_name_str).set(float(psutil.disk_usage('/').free) / float(psutil.disk_usage('/').total))
+  SYSTEM_USAGE.labels('Process-Count', hotspot_name_str).set(sum(1 for proc in psutil.process_iter()))
 
   if IS_DOCKER:
     collect_container_run_time(docker_container, hotspot_name_str)
@@ -256,6 +266,8 @@ def collect_block_age(docker_container, miner_name):
   BLOCKAGE.labels('BlockAge', miner_name).set(age_val)
   log.debug(f"age: {age_val}")
 
+# persist these between calls
+hval = {}
 def collect_hbbft_performance(docker_container, miner_name):
   # parse the hbbft performance table for the penalty field
   out = exec_command('miner hbbft perf --format csv', docker_container)
@@ -263,31 +275,31 @@ def collect_hbbft_performance(docker_container, miner_name):
   for line in out.split("\n"):
     c = [x.strip() for x in line.split(',')]
     # samples:
-    # name,bba_completions,seen_votes,last_bba,last_seen,penalty
-    # curly-peach-owl,11/11,368/368,0,0,1.86
 
-    if len(c) == 6 and miner_name == c[0]:
-      log.debug(f"resl: {c}; {miner_name}/{c[0]}")
-      (bba_votes,bba_tot)=c[1].split("/")
-      (seen_votes,seen_tot)=c[2].split("/")
-      bba_last_val=try_float(c[3])
-      seen_last_val=try_float(c[4])
-      pen_val = try_float(c[5])
+    have_data = False
+
+    if len(c) == 7 and miner_name == c[0]:
+      # name,bba_completions,seen_votes,last_bba,last_seen,tenure,penalty
+      # great-clear-chinchilla,5/5,237/237,0,0,2.91,2.91
+      log.debug(f"resl7: {c}; {miner_name}/{c[0]}")
+
+      (hval['bba_votes'],hval['bba_tot'])=c[1].split("/")
+      (hval['seen_votes'],hval['seen_tot'])=c[2].split("/")
+      hval['bba_last_val']=try_float(c[3])
+      hval['seen_last_val']=try_float(c[4])
+      hval['tenure'] = try_float(c[5])
+      hval['pen_val'] = try_float(c[6])
+    elif len(c) == 6 and miner_name == c[0]:
+      # name,bba_completions,seen_votes,last_bba,last_seen,penalty
+      # curly-peach-owl,11/11,368/368,0,0,1.86
+      log.debug(f"resl6: {c}; {miner_name}/{c[0]}")
+
+      (hval['bba_votes'],hval['bba_tot'])=c[1].split("/")
+      (hval['seen_votes'],hval['seen_tot'])=c[2].split("/")
+      hval['bba_last_val']=try_float(c[3])
+      hval['seen_last_val']=try_float(c[4])
+      hval['pen_val'] = try_float(c[5])
       
-      HBBFT_PERF.labels('hbbft_perf','Penalty', miner_name).set(pen_val)
-      HBBFT_PERF.labels('hbbft_perf','BBA_Total', miner_name).set(bba_tot)
-      HBBFT_PERF.labels('hbbft_perf','BBA_Votes', miner_name).set(bba_votes)
-      HBBFT_PERF.labels('hbbft_perf','Seen_Total', miner_name).set(seen_tot)
-      HBBFT_PERF.labels('hbbft_perf','Seen_Votes', miner_name).set(seen_votes)
-      HBBFT_PERF.labels('hbbft_perf','BBA_Last', miner_name).set(bba_last_val)
-      HBBFT_PERF.labels('hbbft_perf','Seen_Last', miner_name).set(seen_last_val)
-      log.info(f"penalty: {pen_val}")
-      log.debug(f"bba completions: {bba_votes}")
-      log.debug(f"bba total: {bba_tot}")
-      log.debug(f"bba last: {bba_last_val}")
-      log.debug(f"seen votes: {seen_votes}")
-      log.debug(f"seen total: {seen_tot}")
-      log.debug(f"seen last: {seen_last_val}")
     elif len(c) == 6:
       # not our line
       pass
@@ -296,6 +308,16 @@ def collect_hbbft_performance(docker_container, miner_name):
       pass
     else:
       log.debug(f"wrong len ({len(c)}) for hbbft: {c}")
+
+    # always set these, that way they get reset when out of CG
+    HBBFT_PERF.labels('hbbft_perf','Penalty', miner_name).set(hval.get('pen_val', 0))
+    HBBFT_PERF.labels('hbbft_perf','BBA_Total', miner_name).set(hval.get('bba_tot', 0))
+    HBBFT_PERF.labels('hbbft_perf','BBA_Votes', miner_name).set(hval.get('bba_votes', 0))
+    HBBFT_PERF.labels('hbbft_perf','Seen_Total', miner_name).set(hval.get('seen_tot', 0))
+    HBBFT_PERF.labels('hbbft_perf','Seen_Votes', miner_name).set(hval.get('seen_votes', 0))
+    HBBFT_PERF.labels('hbbft_perf','BBA_Last', miner_name).set(hval.get('bba_last_val', 0))
+    HBBFT_PERF.labels('hbbft_perf','Seen_Last', miner_name).set(hval.get('seen_last_val', 0))
+    HBBFT_PERF.labels('hbbft_perf','Tenure', miner_name).set(hval.get('tenure', 0))
 
 def collect_peer_book(docker_container, miner_name):
   # peer book -s output
@@ -350,19 +372,26 @@ def collect_ledger_validators(docker_container, miner_name):
         # header line
         continue
 
-      (val_name,address,last_heard,stake,status,version,tenure_penalty,dkg_penalty,performance_penalty,total_penalty) = c
-      if miner_name == val_name:
+      (val_name,address,last_heartbeat,stake,status,version,tenure_penalty,dkg_penalty,performance_penalty,total_penalty) = c
+      if ALL_PENALTIES or miner_name == val_name:
         log.debug(f"have pen line: {c}")
         tenure_penalty_val = try_float(tenure_penalty)
         dkg_penalty_val = try_float(dkg_penalty)
         performance_penalty_val = try_float(performance_penalty)
         total_penalty_val = try_float(total_penalty)
+        last_heartbeat = try_float(last_heartbeat)
 
-        log.info(f"L penalty: {total_penalty_val}")
-        LEDGER_PENALTY.labels('ledger_penalties', 'tenure', miner_name).set(tenure_penalty_val)
-        LEDGER_PENALTY.labels('ledger_penalties', 'dkg', miner_name).set(dkg_penalty_val)
-        LEDGER_PENALTY.labels('ledger_penalties', 'performance', miner_name).set(performance_penalty_val)
-        LEDGER_PENALTY.labels('ledger_penalties', 'total', miner_name).set(total_penalty_val)
+        log.debug(f"L penalty: {total_penalty_val}")
+        if not ALL_PENALTIES or total_penalty_val > 0.0:
+          LEDGER_PENALTY.labels('ledger_penalties', 'tenure', val_name).set(tenure_penalty_val)
+          LEDGER_PENALTY.labels('ledger_penalties', 'dkg', val_name).set(dkg_penalty_val)
+          LEDGER_PENALTY.labels('ledger_penalties', 'performance', val_name).set(performance_penalty_val)
+          LEDGER_PENALTY.labels('ledger_penalties', 'total', val_name).set(total_penalty_val)
+
+        # In an effort to reduce the number of metrics to track, only gather
+        # last_heartbear for this miner_name. Will this surprise users?
+        if miner_name == val_name:
+          BLOCKAGE.labels('last_heartbeat', val_name).set(last_heartbeat)
 
     elif len(line) == 0:
       # empty lines are fine
@@ -399,4 +428,3 @@ if __name__ == '__main__':
 
     # sleep 30 seconds
     time.sleep(UPDATE_PERIOD)
-
