@@ -35,7 +35,6 @@ IS_DOCKER = False
 ALL_PENALTIES = False
 
 # prometheus exporter types Gauge,Counter,Summary,Histogram,Info and Enum
-SCRAPE_TIME = prometheus_client.Summary('validator_scrape_time', 'Time spent collecting miner data') #DOESN'T CURRENTLY SUPPORT LABELS
 SYSTEM_USAGE = prometheus_client.Gauge('system_usage',
                                        'Hold current system resource usage',
                                        ['resource_type','validator_name'])
@@ -125,7 +124,6 @@ def get_facts(docker_container_obj):
 
 
 # Decorate function with metric.
-@SCRAPE_TIME.time()
 def stats():
   if IS_DOCKER:
     try:
