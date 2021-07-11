@@ -38,6 +38,7 @@ loki:
             - targets: [localhost]
               labels:
                 job: minerlogs
+                ipv4: ${IP4:-badIP}
                 __path__: /home/ubuntu/miner/_build/validator/rel/miner/log/*log*
         - job_name: journal
           journal:
