@@ -1,9 +1,9 @@
 [Unit]
-Description=Immortal validator monitoring
+Description=Immortal node monitoring
 
 [Service]
 User=ubuntu
-ExecStart=python3 /home/ubuntu/miner_exporter.py
+ExecStart=/bin/bash /home/ubuntu/node_exporter --collector.disable-defaults --collector.netstat
 Restart=always
 
 [Install]
