@@ -1,0 +1,10 @@
+[Unit]
+Description=Immortal validator monitoring
+
+[Service]
+User=ubuntu
+ExecStart=python3 /home/ubuntu/miner_exporter.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
