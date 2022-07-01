@@ -31,7 +31,7 @@ loki:
               labels:
                 job: minerlogs
                 ipv4: ${IP4:-badIP}
-                __path__: /home/ubuntu/miner/_build/validator/rel/miner/log/(crash,error,erlang,run_erl)*
+                __path__: /home/ubuntu/miner/_build/validator/rel/miner/log/*
         - job_name: journal
           journal:
             path: /var/log/journal
